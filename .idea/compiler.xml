@@ -7,10 +7,8 @@
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
         <module name="2nd-assignment-pcd" />
+        <module name="fsstat" />
       </profile>
     </annotationProcessing>
-    <bytecodeTargetLevel>
-      <module name="fsstat" target="21" />
-    </bytecodeTargetLevel>
   </component>
 </project>

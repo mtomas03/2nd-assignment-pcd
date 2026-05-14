@@ -48,7 +48,7 @@
                             <transformers>
                                 <transformer
                                         implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-                                    <mainClass>pcd.reactive.TestRx</mainClass>
+                                    <mainClass>pcd.ass02.reactive.TestRx</mainClass>
                                 </transformer>
                             </transformers>
                         </configuration>

@@ -1,10 +1,10 @@
-package pcd.reactive;
+package pcd.ass02.reactive;
 
 import io.reactivex.rxjava3.core.Flowable;
 import io.reactivex.rxjava3.schedulers.Schedulers;
-import pcd.common.FSReport;
-import pcd.common.FSReportAccumulator;
-import pcd.common.ReportParameters;
+import pcd.ass02.common.FSReport;
+import pcd.ass02.common.FSReportAccumulator;
+import pcd.ass02.common.ReportParameters;
 
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;

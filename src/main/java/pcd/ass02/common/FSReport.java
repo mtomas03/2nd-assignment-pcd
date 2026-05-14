@@ -1,4 +1,4 @@
-package pcd.common;
+package pcd.ass02.common;
 
 /**
  * Immutable report of file-system scanning results.

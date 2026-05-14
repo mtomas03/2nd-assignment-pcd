@@ -1,8 +1,8 @@
-package pcd.virtualthreads;
+package pcd.ass02.virtualthreads;
 
-import pcd.common.FSReport;
-import pcd.common.FSReportAccumulator;
-import pcd.common.ReportParameters;
+import pcd.ass02.common.FSReport;
+import pcd.ass02.common.FSReportAccumulator;
+import pcd.ass02.common.ReportParameters;
 
 import java.io.IOException;
 import java.nio.file.DirectoryStream;
@@ -24,7 +24,7 @@ import java.util.concurrent.Future;
  * <ul>
  *   <li>Each VT recursively scans its assigned directory and any subdirectories.</li>
  *   <li>Blocking I/O (DirectoryStream, readAttributes) safely dismounts the carrier thread.</li>
- *   <li>Results are aggregated immutably via {@link pcd.common.FSReport#merge(FSReport)}.</li>
+ *   <li>Results are aggregated immutably via {@link pcd.ass02.common.FSReport#merge(FSReport)}.</li>
  *   <li>Each task builds a local accumulator on its virtual-thread stack,
  *       then merges immutable reports.</li>
  * </ul>

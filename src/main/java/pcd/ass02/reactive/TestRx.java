@@ -1,6 +1,6 @@
-package pcd.reactive;
+package pcd.ass02.reactive;
 
-import pcd.reactive.view.ScanView;
+import pcd.ass02.reactive.view.ScanView;
 
 import javax.swing.*;
 

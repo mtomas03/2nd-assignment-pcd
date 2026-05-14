@@ -1,10 +1,10 @@
-package pcd.reactive.view;
+package pcd.ass02.reactive.view;
 
 import io.reactivex.rxjava3.disposables.Disposable;
-import pcd.common.FSReport;
-import pcd.common.FSReportAccumulator;
-import pcd.common.ReportParameters;
-import pcd.reactive.FSStatLibRx;
+import pcd.ass02.common.FSReport;
+import pcd.ass02.common.FSReportAccumulator;
+import pcd.ass02.common.ReportParameters;
+import pcd.ass02.reactive.FSStatLibRx;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;

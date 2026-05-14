@@ -1,4 +1,4 @@
-package pcd.common;
+package pcd.ass02.common;
 
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicLongArray;

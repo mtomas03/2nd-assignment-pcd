@@ -1,4 +1,4 @@
-package pcd.common;
+package pcd.ass02.common;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
