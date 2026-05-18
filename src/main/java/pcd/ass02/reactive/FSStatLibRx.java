@@ -14,28 +14,6 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * Reactive Programming implementation.
- *
- * <p><b>Execution Model:</b>
- * <ul>
- *   <li>Returns a cold {@link Flowable}; the filesystem traversal
- *       starts only when a subscriber subscribes to the stream.</li>
- *   <li>Recursively traverses the directory tree. Concurrency is managed at
- *       each directory level via {@code flatMap(..., MAX_CONCURRENCY)} to
- *       control the breadth of the scan during stream expansion.</li>
- *   <li>All blocking filesystem operations (directory listing
- *       and file metadata reads) are offloaded to {@link Schedulers#io()}.</li>
- *   <li>Emits intermediate {@link FSReport} updates
- *       by accumulating results with {@code scan(...)} and sampling
- *       the stream every 100ms to maintain UI responsiveness.</li>
- *   <li>Ensures the final, precise report is always delivered as the last item
- *       by merging the sampled progress with the absolute
- *       last element of the accumulation.</li>
- *   <li>Filters consecutive identical reports using
- *       {@code distinctUntilChanged()} to avoid redundant UI cycles.</li>
- *   <li>Implements local error recovery. Unreadable files
- *       are treated as having size 0, and inaccessible directories are silently
- *       skipped, allowing the scan to complete despite localized I/O errors.</li>
- * </ul>
  */
 public class FSStatLibRx {
 

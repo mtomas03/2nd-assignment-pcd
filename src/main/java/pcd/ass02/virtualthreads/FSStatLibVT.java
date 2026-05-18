@@ -18,16 +18,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
 /**
- * Virtual Threads (VT) implementation.
- *
- * <p><b>Execution Model:</b>
- * <ul>
- *   <li>Each VT recursively scans its assigned directory and any subdirectories.</li>
- *   <li>Blocking I/O (DirectoryStream, readAttributes) safely dismounts the carrier thread.</li>
- *   <li>Results are aggregated immutably via {@link pcd.ass02.common.FSReport#merge(FSReport)}.</li>
- *   <li>Each task builds a local accumulator on its virtual-thread stack,
- *       then merges immutable reports.</li>
- * </ul>
+ * Virtual Threads implementation.
  */
 public class FSStatLibVT implements AutoCloseable {
 

@@ -20,22 +20,17 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
- * Simple Swing GUI directly attached to {@link FSStatLibRx}.
+ * Swing GUI directly attached to {@link FSStatLibRx}.
  */
 public class ScanView extends JFrame {
 
     private static final Color BG = Color.WHITE;
-    private static final Color START_BG = Color.GREEN;
-    private static final Color STOP_BG = Color.RED;
     private static final Color PANEL_BG = new Color(245, 245, 245);
     private static final Color BORDER = new Color(200, 200, 200);
     private static final Color TEXT_BLACK = Color.BLACK;
     private static final Color TEXT_GRAY = new Color(100, 100, 100);
-    private static final Color BTN = new Color(60, 60, 60);
-    private static final Font MONO = new Font("Monospaced", Font.PLAIN, 12);
     private static final Font SANS = new Font("SansSerif", Font.PLAIN, 13);
     private static final Font SANS_BOLD = new Font("SansSerif", Font.BOLD, 13);
-    private static final Font TITLE_FONT = new Font("SansSerif", Font.BOLD, 18);
 
     private final FSStatLibRx lib;
     private final AtomicReference<Disposable> currentScan = new AtomicReference<>();
@@ -51,7 +46,7 @@ public class ScanView extends JFrame {
     private JLabel filesLabel;
     private JLabel elapsedLabel;
     private JLabel statusLabel;
-    private StatsPanel histogram;
+    private StatsPanel statsPanel;
     private volatile FSReport lastReport;
 
     public ScanView(FSStatLibRx lib) {
@@ -75,13 +70,13 @@ public class ScanView extends JFrame {
         filesLabel.setText("0");
         elapsedLabel.setText("0 ms");
         setStatus("Scanning...", TEXT_GRAY);
-        histogram.clear();
+        statsPanel.clear();
     }
 
     private void onUpdate(FSReport report, long elapsedMs) {
         filesLabel.setText(String.format("%,d", report.totalFiles()));
         elapsedLabel.setText(elapsedMs + " ms");
-        histogram.setReport(report);
+        statsPanel.setReport(report);
     }
 
     private void onScanCompleted(FSReport report, long elapsedMs) {
@@ -89,7 +84,7 @@ public class ScanView extends JFrame {
         filesLabel.setText(String.format("%,d", report.totalFiles()));
         elapsedLabel.setText(elapsedMs + " ms");
         setStatus("Completed!", TEXT_BLACK);
-        histogram.setReport(report);
+        statsPanel.setReport(report);
     }
 
     private void onScanStopped() {
@@ -117,32 +112,16 @@ public class ScanView extends JFrame {
         statusLabel.setForeground(color);
     }
 
-
     private void buildUI() {
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setMinimumSize(new Dimension(820, 680));
         getContentPane().setBackground(BG);
         setLayout(new BorderLayout(0, 0));
 
-        add(buildHeader(), BorderLayout.NORTH);
         add(buildCenter(), BorderLayout.CENTER);
 
         pack();
         setLocationRelativeTo(null);
-    }
-
-    private JPanel buildHeader() {
-        JPanel p = new JPanel(new BorderLayout());
-        p.setBackground(PANEL_BG);
-        p.setBorder(new MatteBorder(0, 0, 1, 0, BORDER));
-
-        JLabel title = new JLabel("  FSStat");
-        title.setFont(TITLE_FONT);
-        title.setForeground(TEXT_BLACK);
-        title.setBorder(new EmptyBorder(14, 18, 14, 0));
-
-        p.add(title, BorderLayout.WEST);
-        return p;
     }
 
     private JComponent buildCenter() {
@@ -154,20 +133,20 @@ public class ScanView extends JFrame {
         top.add(buildConfigPanel(), BorderLayout.NORTH);
         top.add(buildStatsRow(), BorderLayout.SOUTH);
 
-        histogram = new StatsPanel();
+        statsPanel = new StatsPanel();
 
         p.add(top, BorderLayout.NORTH);
-        p.add(histogram, BorderLayout.CENTER);
+        p.add(statsPanel, BorderLayout.CENTER);
         return p;
     }
 
     private JPanel buildConfigPanel() {
         JPanel p = new JPanel(new GridBagLayout());
         p.setBackground(PANEL_BG);
-        p.setBorder(new EmptyBorder(16, 20, 14, 20));
+        p.setBorder(new EmptyBorder(12, 16, 10, 16));
 
         GridBagConstraints gc = new GridBagConstraints();
-        gc.insets = new Insets(5, 6, 5, 6);
+        gc.insets = new Insets(3, 4, 3, 4);
         gc.anchor = GridBagConstraints.WEST;
         gc.fill = GridBagConstraints.HORIZONTAL;
 
@@ -182,33 +161,32 @@ public class ScanView extends JFrame {
         gc.weightx = 1;
         p.add(dirField, gc);
 
-        browseBtn = button("Browse...", BTN);
+        browseBtn = button("Browse...");
         browseBtn.addActionListener(this::onBrowse);
         gc.gridx = 2;
         gc.weightx = 0;
         p.add(browseBtn, gc);
 
-        // Row 1: max file size + bands + buttons
+        // Row 1: max file size + bands on the same line
         gc.gridx = 0;
         gc.gridy = 1;
         gc.weightx = 0;
         p.add(label("Max file size (bytes)"), gc);
 
         maxFSField = field("10000");
-        maxFSField.setPreferredSize(new Dimension(140, 28));
+        maxFSField.setPreferredSize(new Dimension(110, 26));
         gc.gridx = 1;
-        gc.weightx = 0.4;
-        gc.fill = GridBagConstraints.NONE;
+        gc.weightx = 0.0;
         p.add(maxFSField, gc);
 
-        gc.gridx = 2;
-        gc.weightx = 0;
-        JPanel bandsPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
+        JPanel bandsPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 3, 0));
         bandsPanel.setBackground(PANEL_BG);
         bandsPanel.add(label("Bands"));
         bandsSpinner = new JSpinner(new SpinnerNumberModel(5, 2, 32, 1));
         styleSpinner(bandsSpinner);
         bandsPanel.add(bandsSpinner);
+        gc.gridx = 2;
+        gc.weightx = 0;
         p.add(bandsPanel, gc);
 
         // Row 2: buttons
@@ -216,11 +194,11 @@ public class ScanView extends JFrame {
         gc.gridy = 2;
         gc.fill = GridBagConstraints.NONE;
         gc.weightx = 0;
-        JPanel btnPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
+        JPanel btnPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
         btnPanel.setBackground(PANEL_BG);
 
-        startBtn = button("Start", START_BG);
-        stopBtn = button("Stop", STOP_BG);
+        startBtn = button("Start");
+        stopBtn = button("Stop");
         stopBtn.setEnabled(false);
 
         startBtn.addActionListener(this::onStart);
@@ -272,7 +250,7 @@ public class ScanView extends JFrame {
 
     private JSeparator separator() {
         JSeparator sep = new JSeparator(SwingConstants.VERTICAL);
-        sep.setPreferredSize(new Dimension(1, 30));
+        sep.setPreferredSize(new Dimension(1, 24));
         sep.setForeground(BORDER);
         return sep;
     }
@@ -395,17 +373,18 @@ public class ScanView extends JFrame {
         JTextField tf = new JTextField(text);
         tf.setBackground(Color.WHITE);
         tf.setForeground(TEXT_BLACK);
-        tf.setFont(MONO);
+        tf.setFont(SANS);
         tf.setBorder(BorderFactory.createLineBorder(BORDER));
         return tf;
     }
 
-    private JButton button(String text, Color bgColor) {
+    private JButton button(String text) {
         JButton b = new JButton(text);
         b.setFont(SANS_BOLD);
-        b.setForeground(Color.BLACK);
-        b.setBackground(bgColor);
-        b.setBorder(BorderFactory.createEmptyBorder(7, 18, 7, 18));
+        b.setForeground(TEXT_BLACK);
+        b.setBackground(Color.WHITE);
+        b.setBorder(BorderFactory.createLineBorder(BORDER));
+        b.setMargin(new Insets(4, 10, 4, 10));
         b.setFocusPainted(false);
         b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         return b;
@@ -418,7 +397,7 @@ public class ScanView extends JFrame {
         if (editor instanceof JSpinner.DefaultEditor de) {
             de.getTextField().setBackground(Color.WHITE);
             de.getTextField().setForeground(TEXT_BLACK);
-            de.getTextField().setFont(MONO);
+            de.getTextField().setFont(SANS);
             de.getTextField().setBorder(BorderFactory.createEmptyBorder(2, 4, 2, 4));
         }
     }

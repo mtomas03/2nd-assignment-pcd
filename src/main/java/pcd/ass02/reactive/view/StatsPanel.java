@@ -59,23 +59,36 @@ public class StatsPanel extends JPanel {
         int numBands = report.numBands();
         long maxFS = report.maxFileSize();
 
-        g2.setFont(new Font("SansSerif", Font.BOLD, 12));
+        g2.setFont(new Font("SansSerif", Font.BOLD, 14));
         g2.setColor(TEXT);
         g2.drawString("File Size Distribution", 20, 25);
 
-        g2.setFont(new Font("Monospaced", Font.PLAIN, 11));
+        g2.setFont(new Font("SansSerif", Font.PLAIN, 12));
         int y = 45;
         long bandSize = maxFS / numBands;
+        if (maxFS % numBands != 0) {
+            bandSize++;
+        }
+        bandSize = Math.max(1L, bandSize);
 
         for (int i = 0; i < counts.length; i++) {
-            String rangeLbl;
             if (i < numBands) {
-                rangeLbl = i * bandSize + " – " + (i + 1) * bandSize;
+                long start = i * bandSize;
+                if (start > maxFS) {
+                    continue;
+                }
+                long end = (i == numBands - 1) ? maxFS : Math.min(maxFS, start + bandSize - 1);
+                if (end < start) {
+                    continue;
+                }
+                String rangeLbl = start + " - " + end;
+                String line = String.format("%-18s : %,d files", rangeLbl, counts[i]);
+                g2.drawString(line, 20, y);
             } else {
-                rangeLbl = "> " + maxFS;
+                String rangeLbl = "> " + maxFS;
+                String line = String.format("%-18s : %,d files", rangeLbl, counts[i]);
+                g2.drawString(line, 20, y);
             }
-            String line = String.format("%-18s : %,d files", rangeLbl, counts[i]);
-            g2.drawString(line, 20, y);
             y += 20;
         }
 

@@ -13,24 +13,16 @@ import java.util.Objects;
 
 /**
  * Vert.x event-loop implementation.
- *
- * <p><b>Execution Model:</b>
- * <ul>
- *   <li>Non-blocking file-system operations via Vert.x.</li>
- *   <li>Regular files become unit reports.</li>
- *   <li>Directories recurse asynchronously.</li>
- *   <li>Child futures aggregated and reports merged immutably.</li>
- * </ul>
  */
-public class FSStatLibEventLoop {
+public class FSStatLibEL {
 
     private final Vertx vertx;
 
-    public FSStatLibEventLoop() {
+    public FSStatLibEL() {
         this(Vertx.vertx());
     }
 
-    public FSStatLibEventLoop(Vertx vertx) {
+    public FSStatLibEL(Vertx vertx) {
         this.vertx = Objects.requireNonNull(vertx, "vertx must not be null");
     }
 
