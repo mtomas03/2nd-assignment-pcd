@@ -1,8 +1,8 @@
-package pcd.ass02.virtualthreads;
+package pcd.fsstat.virtualthreads;
 
-import pcd.ass02.common.FSReport;
-import pcd.ass02.common.FSReportAccumulator;
-import pcd.ass02.common.ReportParameters;
+import pcd.fsstat.common.FSReport;
+import pcd.fsstat.common.FSReportAccumulator;
+import pcd.fsstat.common.ReportParameters;
 
 import java.io.IOException;
 import java.nio.file.DirectoryStream;

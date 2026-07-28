@@ -1,6 +1,6 @@
-package pcd.ass02.virtualthreads;
+package pcd.fsstat.virtualthreads;
 
-import pcd.ass02.common.TestLibUtils;
+import pcd.fsstat.common.TestLibUtils;
 
 /**
  * Test entry-point for the Virtual Threads implementation.

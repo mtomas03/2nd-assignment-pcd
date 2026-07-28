@@ -1,6 +1,6 @@
-package pcd.ass02.eventloop;
+package pcd.fsstat.eventloop;
 
-import pcd.ass02.common.TestLibUtils;
+import pcd.fsstat.common.TestLibUtils;
 
 /**
  * Test entry-point for the event-loop implementation.

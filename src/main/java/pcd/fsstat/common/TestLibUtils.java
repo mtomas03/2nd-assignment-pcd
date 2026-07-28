@@ -1,4 +1,4 @@
-package pcd.ass02.common;
+package pcd.fsstat.common;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;

@@ -1,6 +1,6 @@
-package pcd.ass02.reactive;
+package pcd.fsstat.reactive;
 
-import pcd.ass02.reactive.view.ScanView;
+import pcd.fsstat.reactive.view.ScanView;
 
 import javax.swing.*;
 

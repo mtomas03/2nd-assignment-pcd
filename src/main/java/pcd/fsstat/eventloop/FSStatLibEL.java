@@ -1,10 +1,10 @@
-package pcd.ass02.eventloop;
+package pcd.fsstat.eventloop;
 
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
-import pcd.ass02.common.FSReport;
-import pcd.ass02.common.FSReportAccumulator;
-import pcd.ass02.common.ReportParameters;
+import pcd.fsstat.common.FSReport;
+import pcd.fsstat.common.FSReportAccumulator;
+import pcd.fsstat.common.ReportParameters;
 
 import java.nio.file.Path;
 import java.util.ArrayList;

@@ -1,4 +1,4 @@
-package pcd.ass02.common;
+package pcd.fsstat.common;
 
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicLongArray;
