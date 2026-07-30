@@ -6,32 +6,14 @@ import java.util.concurrent.atomic.AtomicLongArray;
 /**
  * Thread-safe, mutable accumulator for building file-size distribution reports.
  *
- * <p><b>Purpose:</b>
- * Accumulates file-size observations from concurrent callbacks/threads and produces
- * an immutable {@link FSReport} snapshot when complete. Used internally by scanning
- * implementations (Vert.x, RxJava, Virtual Threads).
+ * <p>Accumulates multiple file-size observations concurrently across threads
+ * before producing an immutable {@link FSReport} snapshot when the traversal completes.
  *
- * <p><b>Thread Safety:</b>
- * Multiple threads/callbacks can safely call {@link #addFile(long)} concurrently
- * without external synchronization, thanks to atomic field operations:
- * <ul>
- *   <li>{@link java.util.concurrent.atomic.AtomicLong} for totalFiles</li>
- *   <li>{@link java.util.concurrent.atomic.AtomicLongArray} for bandCounts</li>
- * </ul>
- * No lock pinning or blocking synchronization is used, making it suitable for
- * virtual-thread and reactive contexts.
- *
- * <p><b>Band Sizing:</b>
- * The range [0, maxFileSize] is divided into numBands equal-width bands. Each file's
- * size determines which band it falls into; files with size > maxFileSize are
- * counted in the overflow bucket (band numBands).
- *
- * <p><b>Usage Pattern:</b>
- * <ol>
- *   <li>Construct with band parameters</li>
- *   <li>Call {@link #addFile(long)} for each observed file size</li>
- *   <li>Once all additions complete, call {@link #toReport()} to get immutable snapshot</li>
- * </ol>
+ * <p><b>Thread safety</b> is guaranteed by using {@link AtomicLong} and {@link AtomicLongArray}
+ * for lock-free atomic operations. Concurrent invocations of {@link #addFile(long)} perform
+ * indivisible read-modify-write operations powered by Compare-and-Swap instructions paired with
+ * volatile memory semantics. This eliminates race conditions and lost updates while
+ * guaranteeing immediate visibility of changes across threads.
  */
 public class FSReportAccumulator {
 
@@ -44,9 +26,9 @@ public class FSReportAccumulator {
     /**
      * Constructs a new accumulator with the given band parameters.
      *
-     * @param maxFileSize upper bound for regular bands (must be ≥ 0)
+     * @param maxFileSize upper bound for regular bands (must be >= 0)
      * @param numBands    number of equal-width bands within [0, maxFileSize] (must be > 0)
-     * @throws IllegalArgumentException if maxFileSize < 0 or numBands ≤ 0
+     * @throws IllegalArgumentException if maxFileSize < 0 or numBands <= 0
      */
     public FSReportAccumulator(long maxFileSize, int numBands) {
         if (maxFileSize < 0) throw new IllegalArgumentException("maxFileSize must be >= 0");
@@ -65,16 +47,6 @@ public class FSReportAccumulator {
     /**
      * Records one file of the given size.
      *
-     * <p>Atomically updates:
-     * <ul>
-     *   <li>totalFiles: incremented by 1</li>
-     *   <li>bandCounts: the appropriate band is incremented</li>
-     * </ul>
-     * If the file size exceeds maxFileSize, it is counted in the overflow bucket.
-     *
-     * <p>This method is fully thread-safe and lock-free. It is safe to call
-     * concurrently from multiple threads/callbacks.
-     *
      * @param size the file size in bytes (must be >= 0)
      */
     public void addFile(long size) {
@@ -89,14 +61,10 @@ public class FSReportAccumulator {
     }
 
     /**
-     * Produces an immutable snapshot of accumulated statistics.
+     * Produces an immutable FSReport of accumulated statistics.
      *
-     * <p>Should be called only after all {@link #addFile(long)} operations are complete
-     * (or at least, once all concurrent callers have finished). The resulting FSReport
-     * is immutable and safe to share across threads.
-     *
-     * <p>Multiple calls to toReport() will produce equivalent but distinct FSReport instances
-     * (new arrays are created each time).
+     * <p>Should be called only after all {@link #addFile(long)} operations are complete.
+     * The resulting FSReport is immutable and safe to share across threads.
      *
      * @return a new immutable FSReport reflecting the current accumulated state
      */

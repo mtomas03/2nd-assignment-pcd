@@ -3,43 +3,16 @@ package pcd.fsstat.common;
 /**
  * Immutable report of file-system scanning results.
  *
- * <p>An instance of FSReport encapsulates:
- * <ul>
- *   <li><b>totalFiles:</b> total count of files scanned</li>
- *   <li><b>bandCounts:</b> array of file counts per size band</li>
- *   <li><b>maxFileSize:</b> upper bound for the regular size bands</li>
- *   <li><b>numBands:</b> number of equal-width bands within [0, maxFileSize]</li>
- * </ul>
- *
- * <p><b>Band Layout:</b>
- * The array {@code bandCounts} has {@code numBands + 1} elements:
- * <ul>
- *   <li>bandCounts[0..numBands-1]: files in regular bands
- *     <ul>
- *       <li>band i represents the range [i*bandWidth, (i+1)*bandWidth)</li>
- *     </ul>
- *   </li>
- *   <li>bandCounts[numBands]: overflow bucket; files with size > maxFileSize</li>
- * </ul>
- *
- * <p><b>Immutability:</b>
- * This record is immutable. The {@code bandCounts} array is defensively cloned in
- * the constructor and the accessor to prevent external mutation.
- *
- * <p><b>Merging:</b>
- * The {@link #merge(FSReport)} method supports pure functional aggregation
- * of multiple reports without shared mutable state.
- *
- * @param totalFiles  non-negative total file count
- * @param bandCounts  array of length {@code numBands + 1}; each element is non-negative
- * @param maxFileSize upper bound for regular bands (must be ≥ 0)
- * @param numBands    number of regular bands (must be > 0)
+ * @param totalFiles  non-negative total count of files scanned
+ * @param bandCounts  array of file counts per size band; each element is non-negative
+ * @param maxFileSize upper bound for the regular size bands (must be > 0)
+ * @param numBands    number of equal-width bands within [0, maxFileSize]
  */
 public record FSReport(long totalFiles, long[] bandCounts, long maxFileSize, int numBands) {
 
     public FSReport(long totalFiles, long[] bandCounts, long maxFileSize, int numBands) {
         if (bandCounts == null) throw new IllegalArgumentException("bandCounts must not be null");
-        if (maxFileSize < 0) throw new IllegalArgumentException("maxFileSize must be >= 0");
+        if (maxFileSize <= 0) throw new IllegalArgumentException("maxFileSize must be > 0");
         if (numBands <= 0) throw new IllegalArgumentException("numBands must be > 0");
         if (bandCounts.length != numBands + 1) {
             throw new IllegalArgumentException("bandCounts length must be numBands + 1");
@@ -61,6 +34,30 @@ public record FSReport(long totalFiles, long[] bandCounts, long maxFileSize, int
         return new FSReport(0, new long[numBands + 1], maxFileSize, numBands);
     }
 
+    /**
+     * Creates an immutable {@link FSReport} representing a single file of the specified size.
+     *
+     * @param fileSize    size of the file in bytes (must be >= 0)
+     * @param maxFileSize upper bound for regular histogram bands
+     * @param numBands    number of equal-width histogram bands
+     * @return an immutable unit {@link FSReport} containing a single file observation
+     */
+    public static FSReport single(long fileSize, long maxFileSize, int numBands) {
+        long[] counts = new long[numBands + 1];
+        if (fileSize > maxFileSize) {
+            counts[numBands] = 1;
+        } else {
+            long size = maxFileSize / numBands;
+            if (maxFileSize % numBands != 0) {
+                size++;
+            }
+            long bandSize = Math.max(1L, size);
+            int band = (int) Math.min(fileSize / bandSize, numBands - 1);
+            counts[band] = 1;
+        }
+        return new FSReport(1, counts, maxFileSize, numBands);
+    }
+
     @Override
     public long[] bandCounts() {
         return bandCounts.clone();
@@ -70,20 +67,20 @@ public record FSReport(long totalFiles, long[] bandCounts, long maxFileSize, int
     public String toString() {
         long bandSize = bandWidth();
         StringBuilder sb = new StringBuilder();
-        sb.append("=== FSReport ===\n");
-        sb.append(String.format("  Total files : %,d%n", totalFiles));
-        sb.append("  File-size distribution:\n");
+        sb.append("-- FSReport --\n");
+        sb.append(String.format("Total files : %,d%n", totalFiles));
+        sb.append("File-size distribution:\n");
         for (int i = 0; i < numBands; i++) {
             long start = i * bandSize;
             if (start > maxFileSize) {
-                sb.append(String.format("    [empty] bytes : %,d files%n", bandCounts[i]));
+                sb.append(String.format("[empty] bytes : %,d files%n", bandCounts[i]));
             } else {
                 long end = (i == numBands - 1) ? maxFileSize : Math.min(maxFileSize, start + bandSize - 1);
-                sb.append(String.format("    [%,d – %,d] bytes : %,d files%n",
+                sb.append(String.format("[%,d - %,d] bytes : %,d files%n",
                         start, end, bandCounts[i]));
             }
         }
-        sb.append(String.format("    [> %,d]  bytes : %,d files%n",
+        sb.append(String.format("[> %,d]  bytes : %,d files%n",
                 maxFileSize, bandCounts[numBands]));
         return sb.toString();
     }

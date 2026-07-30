@@ -27,10 +27,8 @@ public class FSStatLibVT implements AutoCloseable {
     /**
      * Starts an asynchronous recursive scan using virtual threads.
      *
-     * @param parameters scan parameters including root directory, max file size,
-     *                   and number of bands
-     * @return a non-null {@link Future} that eventually returns the final immutable
-     *         {@link FSReport}
+     * @param parameters the scan configuration containing the target directory, max file size bound, and band count
+     * @return a non-null {@link Future} yielding the final aggregated {@link FSReport} upon completion
      * @throws NullPointerException if {@code parameters} is {@code null}
      */
     public Future<FSReport> getFSReport(ReportParameters parameters) {
@@ -39,12 +37,20 @@ public class FSStatLibVT implements AutoCloseable {
     }
 
     /**
-     * Recursively scans a directory and its subdirectories on a virtual thread,
-     * producing an aggregated immutable FSReport.
+     * Recursively traverses a directory subtree on a virtual thread using a divide-and-conquer approach.
      *
-     * @param parameters scan parameters including root directory, max file size,
-     *                   and number of bands
-     * @return a {@link Future} yielding the aggregated FSReport for this directory subtree
+     * <p>For each entry in the target directory:
+     * <ul>
+     *   <li>Regular files are measured and accumulated into a task-confined {@link FSReportAccumulator}.</li>
+     *   <li>Subdirectories asynchronously spawn new tasks submitted to the executor.</li>
+     * </ul>
+     *
+     * <p>After processing local entries, the method blocks the virtual thread until all child subtree
+     * tasks complete, then merges their results into a single aggregated report. Inaccessible files
+     * or directories are safely skipped without interrupting the remaining traversal.
+     *
+     * @param parameters configuration parameters adjusted for the current directory subtree
+     * @return a {@link Future} resolving to the consolidated {@link FSReport} for this directory subtree
      */
     private Future<FSReport> scanDirectoryAsync(ReportParameters parameters) {
         return this.executor.submit(() -> {
@@ -82,7 +88,7 @@ public class FSStatLibVT implements AutoCloseable {
     }
 
     /**
-     * Shuts down the internal executor.
+     * Gracefully shuts down the internal virtual thread {@link ExecutorService}.
      */
     @Override
     public void close() {

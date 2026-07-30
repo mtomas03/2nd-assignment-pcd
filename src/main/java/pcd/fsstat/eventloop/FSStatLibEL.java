@@ -3,7 +3,6 @@ package pcd.fsstat.eventloop;
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 import pcd.fsstat.common.FSReport;
-import pcd.fsstat.common.FSReportAccumulator;
 import pcd.fsstat.common.ReportParameters;
 
 import java.nio.file.Path;
@@ -27,60 +26,53 @@ public class FSStatLibEL {
     }
 
     /**
-     * Starts a non-blocking asynchronous recursive scan.
+     * Initiates an asynchronous file-system scan for the directory specified in the parameters.
      *
-     * <p>This method returns immediately without performing any I/O.
-     * The returned {@link Future} completes when all directory entries
-     * and their statistics have been fully scanned and merged.
-     *
-     * <p>Errors in individual entries are silently skipped via recovery
-     * handlers; only fatal I/O failures to the root directory propagate
-     * as exceptional completion.
-     *
-     * @param parameters scan parameters including root directory, max file size,
-     *                   and number of bands
-     * @return a non-null Vert.x {@link Future} that eventually yields the
-     *         aggregated {@link FSReport}
-     * @throws NullPointerException if {@code parameters} is {@code null}
+     * @param parameters the scan configuration specifying target directory, band sizes, and bounds
+     * @return a {@link Future} that completes with the final aggregated immutable {@link FSReport}
+     * @throws NullPointerException if {@code parameters} is null
      */
     public Future<FSReport> getFSReport(ReportParameters parameters) {
         Objects.requireNonNull(parameters, "parameters must not be null");
-        return traverseAsync(parameters);
+        return scanDirectory(parameters);
     }
 
     /**
-     * Recursively traverses {@code dir} using Vert.x file-system futures and
-     * returns an immutable {@link FSReport} for the whole subtree.
+     * Asynchronously reads a directory and triggers child path inspection tasks.
      *
-     * <p>Each call returns a {@code Future<FSReport>} that, when complete,
-     * contains the aggregated statistics for that directory and all its
-     * descendants. Regular files are converted into unit reports, subdirectories
-     * recurse through {@link #processPath(ReportParameters)}, and the resulting
-     * child reports are merged immutably via {@link FSReport#merge(FSReport)}.
+     * <p>If reading the directory fails, the error is recovered
+     * gracefully by treating the directory as empty.
      *
-     * <p>Unreadable directories are treated as empty subtrees.
-     *
-     * @param parameters scan parameters including root directory, max file size,
-     *                   and number of bands
-     * @return a future completed with the aggregated report for {@code dir}
+     * @param parameters configuration for the current directory path
+     * @return a future resolving to the aggregated report of the directory and all its children
      */
-    private Future<FSReport> traverseAsync(ReportParameters parameters) {
+    private Future<FSReport> scanDirectory(ReportParameters parameters) {
+        // Asynchronously request file names contained in target directory
         return vertx.fileSystem().readDir(parameters.directory().toString())
+                // Recover from read failures by returning an empty list
                 .recover(err -> Future.succeededFuture(List.of()))
+                // Chain processing when directory entry list becomes available
                 .compose(children -> {
+                    // Pre-allocate list to hold futures for each child entry
                     List<Future<FSReport>> childReports = new ArrayList<>(children.size());
+                    // Iterate through each child path string returned by Vert.x
                     for (String child : children) {
-                        childReports.add(processPath(parameters.withDirectory(Path.of(child))));
+                        // Dispatch asynchronous inspection for child path and accumulate future
+                        childReports.add(processFSEntry(parameters.withDirectory(Path.of(child))));
                     }
 
+                    // Check if directory is empty
                     if (childReports.isEmpty()) {
+                        // Complete immediately with an empty report instance
                         return Future.succeededFuture(FSReport.empty(
                                 parameters.maxFileSize(), parameters.numBands()));
                     }
 
-                    // Collect all child reports and merge them into a single, immutable report
+                    // Join all child futures, waiting for every child subtree to finish scanning
                     return Future.all(childReports)
+                            // Map composite results into a single merged report upon completion
                             .map(compositeFuture -> mergeReports(
+                                    // Extract raw list of resolved FSReport objects
                                     compositeFuture.list(),
                                     parameters.maxFileSize(),
                                     parameters.numBands()
@@ -89,33 +81,37 @@ public class FSStatLibEL {
     }
 
     /**
-     * Classifies a single path and returns its report immutably.
+     * Inspects a file-system entry to determine whether it is a subdirectory or a regular file.
      *
-     * <p>If the path is a directory, the method recurses via
-     * {@link #traverseAsync(ReportParameters)}. If the path is a regular file,
-     * it is converted into a unit report containing exactly one counted file.
-     * Any error while inspecting the path is recovered as an empty report so
-     * that inaccessible entries do not abort the whole scan.
+     * <p>Recursively invokes directory traversal for subdirectories or creates a unit report for
+     * regular files. I/O errors are caught and gracefully fallback to an empty report.
      *
-     * @param parameters scan parameters including root directory, max file size,
-     *                   and number of bands
-     * @return a future completed with the report for the single path
+     * @param parameters configuration for the path being evaluated
+     * @return a future completing with the report for this specific path
      */
-    private Future<FSReport> processPath(ReportParameters parameters) {
+    private Future<FSReport> processFSEntry(ReportParameters parameters) {
+        // Asynchronously fetch file properties/metadata for target path
         return vertx.fileSystem().props(parameters.directory().toString())
+                // Chain evaluation once metadata is fetched
                 .compose(props -> {
+                    // Branch execution if path points to a directory
                     if (props.isDirectory()) {
-                        return traverseAsync(parameters);
+                        // Recursively trigger directory scanning pipeline
+                        return scanDirectory(parameters);
                     }
 
-                    // Unit report for a single file (immutable)
+                    // For regular files, return a succeeded future with a single-file report
                     return Future.succeededFuture(
-                            createUnitReport(
+                            FSReport.single(
+                                    // Extract size in bytes from file properties
                                     props.size(),
+                                    // Pass max file size limit
                                     parameters.maxFileSize(),
+                                    // Pass histogram band count
                                     parameters.numBands())
                     );
                 })
+                // Fallback to empty report on any I/O error (e.g., broken symlink or access denied)
                 .recover(err -> Future.succeededFuture(FSReport.empty(
                         parameters.maxFileSize(),
                         parameters.numBands()
@@ -123,21 +119,19 @@ public class FSStatLibEL {
     }
 
     /**
-     * Merge a list of {@link FSReport} instances into a single immutable report.
+     * Combines a list of completed child reports into a single aggregated report.
      *
-     * <p>This helper is used after {@code Future.all(...)} has completed so the
-     * list contains only successfully completed child reports. Non-{@link FSReport}
-     * entries are ignored defensively.
-     *
-     * @param reports     list of reports to merge
-     * @param maxFileSize maximum file size used to build the histogram bands
-     * @param numBands    number of regular size bands
-     * @return the merged report
+     * @param reports     list of child reports returned by the composite future
+     * @param maxFileSize upper bound for regular histogram bands
+     * @param numBands    number of histogram bands
+     * @return a new merged immutable {@link FSReport}
      */
     private FSReport mergeReports(List<?> reports, long maxFileSize, int numBands) {
         FSReport result = FSReport.empty(maxFileSize, numBands);
+        // Iterate through untyped list items returned by composite future
         for (Object o : reports) {
             if (o instanceof FSReport r) {
+                // Merge individual child report into accumulated total
                 result = result.merge(r);
             }
         }
@@ -145,27 +139,7 @@ public class FSStatLibEL {
     }
 
     /**
-     * Creates a unit report for a single file size.
-     *
-     * <p>The report is built through {@link FSReportAccumulator} and immediately
-     * converted to its immutable snapshot form.
-     *
-     * @param fileSize    size of the file to count
-     * @param maxFileSize maximum file size used to build the histogram bands
-     * @param numBands    number of regular size bands
-     * @return a report describing a single file
-     */
-    private FSReport createUnitReport(long fileSize, long maxFileSize, int numBands) {
-        FSReportAccumulator acc = new FSReportAccumulator(maxFileSize, numBands);
-        acc.addFile(fileSize);
-        return acc.toReport();
-    }
-
-    /**
-     * Closes the underlying Vert.x instance.
-     *
-     * <p>Call this method when the library is no longer needed to release the
-     * event-loop and file-system resources owned by Vert.x.
+     * Closes the underlying Vert.x instance and releases associated asynchronous resources.
      */
     public void shutdown() {
         vertx.close();

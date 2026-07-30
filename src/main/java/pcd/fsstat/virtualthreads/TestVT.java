@@ -1,5 +1,6 @@
 package pcd.fsstat.virtualthreads;
 
+import pcd.fsstat.common.FSReport;
 import pcd.fsstat.common.TestLibUtils;
 
 /**
@@ -11,10 +12,14 @@ public class TestVT {
         var parsed = TestLibUtils.parseArgs(args);
 
         try (var lib = new FSStatLibVT()) {
-            TestLibUtils.runAndPrint(parsed,
-                    () -> lib.getFSReport(parsed).get(),
-                    null);
+            long start = System.currentTimeMillis();
+            FSReport report = lib.getFSReport(parsed).get();
+            long elapsed = System.currentTimeMillis() - start;
+
+            TestLibUtils.printReport(report, elapsed);
+        } catch (Exception e) {
+            System.err.println("Scan failed: " + e.getMessage());
+            e.printStackTrace(System.err);
         }
     }
 }
-

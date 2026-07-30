@@ -5,27 +5,26 @@ import java.nio.file.Paths;
 import java.util.Objects;
 
 /**
- * Small utility to parse CLI args and run demo mains with minimal duplication.
+ * Utility class for parsing CLI arguments and formatting report outputs.
  */
 public final class TestLibUtils {
 
     private TestLibUtils() {}
 
-    @FunctionalInterface
-    public interface ThrowingSupplier<T> {
-        T get() throws Exception;
-    }
-
     /**
-     * Parse common CLI arguments used by the demo mains.
+     * Parses common CLI arguments.
+     *
+     * @param args command-line arguments: root directory, optional maxFileSize, and optional numBands
+     * @return populated {@link ReportParameters} configuration object
+     * @throws IllegalArgumentException if mandatory arguments are missing
      */
     public static ReportParameters parseArgs(String[] args) {
         if (args.length < 1) {
             throw new IllegalArgumentException("Usage: <TestLib> <directory> [maxFileSize] [numBands]");
         }
         Path directory = Paths.get(args[0]);
-        long maxFileSize = args.length > 1 ? Long.parseLong(args[1]) : 1_048_576L;
-        int numBands = args.length > 2 ? Integer.parseInt(args[2]) : 8;
+        long maxFileSize = args.length > 1 ? Long.parseLong(args[1]) : 1000L;
+        int numBands = args.length > 2 ? Integer.parseInt(args[2]) : 5;
 
         System.out.printf("Directory   : %s%n", directory.toAbsolutePath());
         System.out.printf("maxFileSize : %,d bytes%n", maxFileSize);
@@ -35,25 +34,14 @@ public final class TestLibUtils {
     }
 
     /**
-     * Run the supplied blocking supplier, print report and elapsed time, and run cleanup.
+     * Prints the completed {@link FSReport} statistics and the total elapsed scanning time.
+     *
+     * @param report    the generated report snapshot
+     * @param elapsedMs scanning duration in milliseconds
      */
-    public static void runAndPrint(
-            ReportParameters parsed, ThrowingSupplier<FSReport> supplier, Runnable cleanup) {
-        Objects.requireNonNull(parsed);
-        long start = System.currentTimeMillis();
-        try {
-            FSReport report = supplier.get();
-            long elapsed = System.currentTimeMillis() - start;
-            System.out.println(report);
-            System.out.printf("  Elapsed: %d ms%n", elapsed);
-        } catch (Throwable t) {
-            System.err.println("Scan failed: " + t.getMessage());
-            t.printStackTrace(System.err);
-        } finally {
-            if (cleanup != null) {
-                try { cleanup.run(); } catch (Exception ignored) {}
-            }
-        }
+    public static void printReport(FSReport report, long elapsedMs) {
+        Objects.requireNonNull(report, "report must not be null");
+        System.out.println(report);
+        System.out.printf("Elapsed: %d ms%n", elapsedMs);
     }
 }
-
