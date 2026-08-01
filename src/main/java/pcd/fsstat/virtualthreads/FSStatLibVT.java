@@ -33,7 +33,7 @@ public class FSStatLibVT implements AutoCloseable {
      */
     public Future<FSReport> getFSReport(ReportParameters parameters) {
         Objects.requireNonNull(parameters, "parameters must not be null");
-        return scanDirectoryAsync(parameters);
+        return scanDirectory(parameters);
     }
 
     /**
@@ -46,13 +46,13 @@ public class FSStatLibVT implements AutoCloseable {
      * </ul>
      *
      * <p>After processing local entries, the method blocks the virtual thread until all child subtree
-     * tasks complete, then merges their results into a single aggregated report. Inaccessible files
+     * tasks complete, then merges their results into a single aggregated {@link FSReport}. Inaccessible files
      * or directories are safely skipped without interrupting the remaining traversal.
      *
      * @param parameters configuration parameters adjusted for the current directory subtree
      * @return a {@link Future} resolving to the consolidated {@link FSReport} for this directory subtree
      */
-    private Future<FSReport> scanDirectoryAsync(ReportParameters parameters) {
+    private Future<FSReport> scanDirectory(ReportParameters parameters) {
         return this.executor.submit(() -> {
             FSReportAccumulator localAcc = new FSReportAccumulator(
                     parameters.maxFileSize(), parameters.numBands());
@@ -63,7 +63,7 @@ public class FSStatLibVT implements AutoCloseable {
                     try {
                         BasicFileAttributes attrs = Files.readAttributes(entry, BasicFileAttributes.class);
                         if (attrs.isDirectory()) {
-                            childFutures.add(scanDirectoryAsync(parameters.withDirectory(entry)));
+                            childFutures.add(scanDirectory(parameters.withDirectory(entry)));
                         } else {
                             localAcc.addFile(attrs.size());
                         }

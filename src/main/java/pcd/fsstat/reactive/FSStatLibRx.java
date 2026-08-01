@@ -29,7 +29,7 @@ public class FSStatLibRx {
         FSReport emptyReport = FSReport.empty(parameters.maxFileSize(), parameters.numBands());
 
         return scanDirectory(parameters.directory())
-                // Offload blocking file-system I/O operations to the dedicated I/O scheduler
+                // Delegate blocking file-system I/O operations to the dedicated I/O scheduler
                 .subscribeOn(Schedulers.io())
 
                 // Map each discovered file size into a single-file FSReport

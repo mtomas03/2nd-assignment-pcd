@@ -6,7 +6,7 @@ import javax.swing.*;
 import java.awt.*;
 
 /**
- * JPanel that displays file size distribution using standard Swing aesthetics.
+ * JPanel that displays file size distribution.
  */
 public class StatsPanel extends JPanel {
 
