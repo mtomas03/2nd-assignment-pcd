@@ -47,32 +47,29 @@ public class FSStatLibEL {
      * @return a future resolving to the aggregated report of the directory and all its children
      */
     private Future<FSReport> scanDirectory(ReportParameters parameters) {
-        // Asynchronously request file names contained in target directory
+        // Asynchronous non-blocking request to read directory entries (delegated to internal worker pool)
         return vertx.fileSystem().readDir(parameters.directory().toString())
                 // Recover from read failures by returning an empty list
                 .recover(err -> Future.succeededFuture(List.of()))
-                // Chain processing when directory entry list becomes available
+                // CPS: execute processing logic on event loop thread once directory entries are available
                 .compose(children -> {
-                    // Pre-allocate list to hold futures for each child entry
                     List<Future<FSReport>> childReports = new ArrayList<>(children.size());
-                    // Iterate through each child path string returned by Vert.x
+
+                    // Asynchronous inspection for each discovered child path
                     for (String child : children) {
-                        // Dispatch asynchronous inspection for child path and accumulate future
                         childReports.add(processFSEntry(parameters.withDirectory(Path.of(child))));
                     }
 
-                    // Check if directory is empty
+                    // Immediate completion for empty directories
                     if (childReports.isEmpty()) {
-                        // Complete immediately with an empty report instance
                         return Future.succeededFuture(FSReport.empty(
                                 parameters.maxFileSize(), parameters.numBands()));
                     }
 
-                    // Join all child futures, waiting for every child subtree to finish scanning
+                    // Non-blocking join of all child report futures into a single composite future
                     return Future.all(childReports)
-                            // Map composite results into a single merged report upon completion
+                            // Merge completed child reports into a single aggregated report
                             .map(compositeFuture -> mergeReports(
-                                    // Extract raw list of resolved FSReport objects
                                     compositeFuture.list(),
                                     parameters.maxFileSize(),
                                     parameters.numBands()
@@ -90,28 +87,24 @@ public class FSStatLibEL {
      * @return a future completing with the report for this specific path
      */
     private Future<FSReport> processFSEntry(ReportParameters parameters) {
-        // Asynchronously fetch file properties/metadata for target path
+        // Asynchronously fetch file properties for target path (delegated to internal worker pool)
         return vertx.fileSystem().props(parameters.directory().toString())
-                // Chain evaluation once metadata is fetched
+                // CPS: evaluate entry type once properties are obtained
                 .compose(props -> {
-                    // Branch execution if path points to a directory
                     if (props.isDirectory()) {
-                        // Recursively trigger directory scanning pipeline
+                        // Asynchronous recursive scan for subdirectories
                         return scanDirectory(parameters);
                     }
 
-                    // For regular files, return a succeeded future with a single-file report
+                    // Produce an immediate unit report for regular files
                     return Future.succeededFuture(
                             FSReport.single(
-                                    // Extract size in bytes from file properties
                                     props.size(),
-                                    // Pass max file size limit
                                     parameters.maxFileSize(),
-                                    // Pass histogram band count
                                     parameters.numBands())
                     );
                 })
-                // Fallback to empty report on any I/O error (e.g., broken symlink or access denied)
+                // Fallback to empty report on any I/O error
                 .recover(err -> Future.succeededFuture(FSReport.empty(
                         parameters.maxFileSize(),
                         parameters.numBands()
@@ -128,10 +121,8 @@ public class FSStatLibEL {
      */
     private FSReport mergeReports(List<?> reports, long maxFileSize, int numBands) {
         FSReport result = FSReport.empty(maxFileSize, numBands);
-        // Iterate through untyped list items returned by composite future
         for (Object o : reports) {
             if (o instanceof FSReport r) {
-                // Merge individual child report into accumulated total
                 result = result.merge(r);
             }
         }
